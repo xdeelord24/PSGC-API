@@ -9,14 +9,29 @@ const db = require('../database/db');
 const fs = require('fs');
 
 // PSA Official Statistics (as of September 30, 2025)
-// Source: https://psa.gov.ph/classification/psgc/
-// Latest update: Philippine Standard Geographic Code as of 30 September 2025
+// Source: PSA Geographic Level Total Number (as of 30 September 2025)
+// Region: 18
+// Province: 82
+// Highly Urbanized City (HUC): 33
+// Other Cities: 116 (Independent Component City: 5, Component City: 111)
+// Total Cities: 149 (33 HUC + 116 other)
+// Municipality: 1,493
+// Barangay: 42,011
 const PSA_STANDARDS = {
-  regions: { exact: 18, min: 17, max: 18 }, // 18 regions (including NCR)
-  provinces: { exact: 82, min: 81, max: 82 },
-  cities: { exact: 149, min: 145, max: 155 }, // 33 HUCs + 116 other cities (5 ICCs + 111 CCs) = 149 total
-  municipalities: { exact: 1493, min: 1480, max: 1500 },
-  barangays: { exact: 42011, min: 42000, max: 42100 }
+  regions: { exact: 18, min: 18, max: 18 },
+  provinces: { exact: 82, min: 82, max: 82 },
+  cities: { 
+    exact: 149, // 33 HUC + 116 other (5 ICC + 111 CC)
+    min: 149, 
+    max: 149,
+    breakdown: {
+      huc: 33,    // Highly Urbanized City
+      icc: 5,     // Independent Component City
+      cc: 111     // Component City
+    }
+  },
+  municipalities: { exact: 1493, min: 1493, max: 1493 },
+  barangays: { exact: 42011, min: 42011, max: 42011 }
 };
 
 // PSA Website URLs

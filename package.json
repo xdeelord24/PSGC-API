@@ -11,6 +11,7 @@
     "import": "node src/scripts/importPSGC.js",
     "validate": "node src/scripts/validatePSGC.js",
     "diagnose": "node src/scripts/diagnoseDiscrepancies.js",
+    "clean": "node src/scripts/cleanPSGCData.js",
     "fetch": "node src/scripts/fetchFromPSGCCloud.js",
     "download": "node src/scripts/downloadPSGC.js",
     "fetch-psgc": "node src/scripts/fetchPSGC.js",

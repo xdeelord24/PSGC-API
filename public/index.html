@@ -639,6 +639,20 @@
                     <div class="endpoint-description">Get all provinces</div>
                     <div class="response-section" id="provinces-list"></div>
                 </div>
+
+                <div class="endpoint-item">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-url">/api/v1/provinces/:code</span>
+                        <div class="example-input" style="margin: 10px 0;">
+                            <label>Province Code:</label>
+                            <input type="text" id="province-code" placeholder="e.g., 042100000" value="042100000">
+                        </div>
+                        <button class="test-btn" id="test-province-code-btn">Test</button>
+                    </div>
+                    <div class="endpoint-description">Get a specific province by code</div>
+                    <div class="response-section" id="province-detail"></div>
+                </div>
             </div>
 
             <div class="endpoint-group">
@@ -652,6 +666,20 @@
                     </div>
                     <div class="endpoint-description">Get all cities</div>
                     <div class="response-section" id="cities-list"></div>
+                </div>
+
+                <div class="endpoint-item">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-url">/api/v1/cities/:code</span>
+                        <div class="example-input" style="margin: 10px 0;">
+                            <label>City Code:</label>
+                            <input type="text" id="city-code" placeholder="e.g., 137404000" value="137404000">
+                        </div>
+                        <button class="test-btn" id="test-city-code-btn">Test</button>
+                    </div>
+                    <div class="endpoint-description">Get a specific city by code</div>
+                    <div class="response-section" id="city-detail"></div>
                 </div>
             </div>
 
@@ -667,6 +695,20 @@
                     <div class="endpoint-description">Get all municipalities</div>
                     <div class="response-section" id="municipalities-list"></div>
                 </div>
+
+                <div class="endpoint-item">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-url">/api/v1/municipalities/:code</span>
+                        <div class="example-input" style="margin: 10px 0;">
+                            <label>Municipality Code:</label>
+                            <input type="text" id="municipality-code" placeholder="e.g., 042101000" value="042101000">
+                        </div>
+                        <button class="test-btn" id="test-municipality-code-btn">Test</button>
+                    </div>
+                    <div class="endpoint-description">Get a specific municipality by code</div>
+                    <div class="response-section" id="municipality-detail"></div>
+                </div>
             </div>
 
             <div class="endpoint-group">
@@ -680,6 +722,20 @@
                     </div>
                     <div class="endpoint-description">Get all barangays (limited to 50 for display)</div>
                     <div class="response-section" id="barangays-list"></div>
+                </div>
+
+                <div class="endpoint-item">
+                    <div class="endpoint-header">
+                        <span class="method get">GET</span>
+                        <span class="endpoint-url">/api/v1/barangays/:code</span>
+                        <div class="example-input" style="margin: 10px 0;">
+                            <label>Barangay Code:</label>
+                            <input type="text" id="barangay-code" placeholder="e.g., 137602006" value="137602006">
+                        </div>
+                        <button class="test-btn" id="test-barangay-code-btn">Test</button>
+                    </div>
+                    <div class="endpoint-description">Get a specific barangay by code</div>
+                    <div class="response-section" id="barangay-detail"></div>
                 </div>
             </div>
         </div>

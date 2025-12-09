@@ -330,6 +330,74 @@ function testRegionByCode(btnElement = null) {
     testEndpoint(`/api/v1/regions/${encodeURIComponent(code)}`, 'region-detail', btn);
 }
 
+// Test province by code
+function testProvinceByCode(btnElement = null) {
+    const codeInput = document.getElementById('province-code');
+    if (!codeInput) {
+        console.error('Province code input not found');
+        return;
+    }
+    const code = codeInput.value.trim();
+    if (!code) {
+        alert('Please enter a province code');
+        return;
+    }
+    const btn = btnElement;
+    debug('Testing province by code:', code);
+    testEndpoint(`/api/v1/provinces/${encodeURIComponent(code)}`, 'province-detail', btn);
+}
+
+// Test city by code
+function testCityByCode(btnElement = null) {
+    const codeInput = document.getElementById('city-code');
+    if (!codeInput) {
+        console.error('City code input not found');
+        return;
+    }
+    const code = codeInput.value.trim();
+    if (!code) {
+        alert('Please enter a city code');
+        return;
+    }
+    const btn = btnElement;
+    debug('Testing city by code:', code);
+    testEndpoint(`/api/v1/cities/${encodeURIComponent(code)}`, 'city-detail', btn);
+}
+
+// Test municipality by code
+function testMunicipalityByCode(btnElement = null) {
+    const codeInput = document.getElementById('municipality-code');
+    if (!codeInput) {
+        console.error('Municipality code input not found');
+        return;
+    }
+    const code = codeInput.value.trim();
+    if (!code) {
+        alert('Please enter a municipality code');
+        return;
+    }
+    const btn = btnElement;
+    debug('Testing municipality by code:', code);
+    testEndpoint(`/api/v1/municipalities/${encodeURIComponent(code)}`, 'municipality-detail', btn);
+}
+
+// Test barangay by code
+function testBarangayByCode(btnElement = null) {
+    const codeInput = document.getElementById('barangay-code');
+    if (!codeInput) {
+        console.error('Barangay code input not found');
+        return;
+    }
+    const code = codeInput.value.trim();
+    if (!code) {
+        alert('Please enter a barangay code');
+        return;
+    }
+    const btn = btnElement;
+    debug('Testing barangay by code:', code);
+    testEndpoint(`/api/v1/barangays/${encodeURIComponent(code)}`, 'barangay-detail', btn);
+}
+
 // Test search - enhanced version
 async function testSearch(btnElement = null) {
     const searchInput = document.getElementById('search-input');
@@ -590,6 +658,34 @@ function initialize() {
     if (regionCodeBtn) {
         regionCodeBtn.addEventListener('click', () => {
             testRegionByCode(regionCodeBtn);
+        });
+    }
+
+    const provinceCodeBtn = document.getElementById('test-province-code-btn');
+    if (provinceCodeBtn) {
+        provinceCodeBtn.addEventListener('click', () => {
+            testProvinceByCode(provinceCodeBtn);
+        });
+    }
+
+    const cityCodeBtn = document.getElementById('test-city-code-btn');
+    if (cityCodeBtn) {
+        cityCodeBtn.addEventListener('click', () => {
+            testCityByCode(cityCodeBtn);
+        });
+    }
+
+    const municipalityCodeBtn = document.getElementById('test-municipality-code-btn');
+    if (municipalityCodeBtn) {
+        municipalityCodeBtn.addEventListener('click', () => {
+            testMunicipalityByCode(municipalityCodeBtn);
+        });
+    }
+
+    const barangayCodeBtn = document.getElementById('test-barangay-code-btn');
+    if (barangayCodeBtn) {
+        barangayCodeBtn.addEventListener('click', () => {
+            testBarangayByCode(barangayCodeBtn);
         });
     }
     
