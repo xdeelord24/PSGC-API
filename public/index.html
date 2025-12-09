@@ -250,15 +250,100 @@
         }
 
         .response-body {
-            background: #2d2d2d;
-            color: #f8f8f2;
-            padding: 15px;
-            border-radius: 5px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
             overflow-x: auto;
-            max-height: 400px;
+            max-height: 600px;
             overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        /* JSON Syntax Highlighting */
+        .json-key {
+            color: #9cdcfe;
+        }
+
+        .json-string {
+            color: #ce9178;
+        }
+
+        .json-number {
+            color: #b5cea8;
+        }
+
+        .json-boolean {
+            color: #569cd6;
+        }
+
+        .json-null {
+            color: #569cd6;
+            font-style: italic;
+        }
+
+        .json-bracket {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .json-colon {
+            color: #d4d4d4;
+        }
+
+        .json-comma {
+            color: #d4d4d4;
+        }
+
+        .response-body pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Collapsible sections */
+        .json-toggle {
+            cursor: pointer;
+            user-select: none;
+            display: inline-block;
+            width: 12px;
+            margin-right: 5px;
+            font-weight: bold;
+            color: #569cd6;
+        }
+
+        .json-collapsed {
+            display: none;
+        }
+
+        .json-toggle::before {
+            content: '▼';
+        }
+
+        .json-toggle.collapsed::before {
+            content: '▶';
+        }
+
+        /* Better list formatting */
+        .response-item {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 2px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .response-count {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-left: 10px;
         }
 
         .loading {
@@ -329,6 +414,40 @@
 
         .copy-btn:hover {
             background: #5a6268;
+        }
+
+        /* Scrollbar styling */
+        .response-body::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        .response-body::-webkit-scrollbar-track {
+            background: #2d2d2d;
+            border-radius: 5px;
+        }
+
+        .response-body::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 5px;
+        }
+
+        .response-body::-webkit-scrollbar-thumb:hover {
+            background: #5568d3;
+        }
+
+        /* Code block improvements */
+        .response-body pre {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Highlight matching text in search */
+        .highlight {
+            background: rgba(255, 235, 59, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
         }
     </style>
 </head>

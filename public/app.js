@@ -6,6 +6,112 @@ function debug(message, data = null) {
     console.log(`[PSGC UI] ${message}`, data || '');
 }
 
+// Format JSON with syntax highlighting and pretty printing
+function formatJSON(obj, indent = 0, maxDepth = 10) {
+    if (maxDepth === 0) {
+        return '<span class="json-null">...</span>';
+    }
+
+    const indentStr = '  '.repeat(indent);
+    const nextIndent = indent + 1;
+
+    if (obj === null) {
+        return '<span class="json-null">null</span>';
+    }
+
+    if (obj === undefined) {
+        return '<span class="json-null">undefined</span>';
+    }
+
+    if (typeof obj === 'string') {
+        return `<span class="json-string">"${escapeHtml(obj)}"</span>`;
+    }
+
+    if (typeof obj === 'number') {
+        return `<span class="json-number">${obj}</span>`;
+    }
+
+    if (typeof obj === 'boolean') {
+        return `<span class="json-boolean">${obj}</span>`;
+    }
+
+    if (Array.isArray(obj)) {
+        if (obj.length === 0) {
+            return '<span class="json-bracket">[</span><span class="json-bracket">]</span>';
+        }
+
+        let html = '<span class="json-bracket">[</span>\n';
+        const items = obj.slice(0, 100); // Limit display to first 100 items
+        items.forEach((item, index) => {
+            html += `${indentStr}  ${formatJSON(item, nextIndent, maxDepth - 1)}`;
+            if (index < items.length - 1 || obj.length > 100) {
+                html += '<span class="json-comma">,</span>';
+            }
+            html += '\n';
+        });
+        if (obj.length > 100) {
+            html += `${indentStr}  <span class="json-null">... ${obj.length - 100} more items</span>\n`;
+        }
+        html += `${indentStr}<span class="json-bracket">]</span>`;
+        return html;
+    }
+
+    if (typeof obj === 'object') {
+        const keys = Object.keys(obj);
+        if (keys.length === 0) {
+            return '<span class="json-bracket">{</span><span class="json-bracket">}</span>';
+        }
+
+        let html = '<span class="json-bracket">{</span>\n';
+        keys.forEach((key, index) => {
+            const value = obj[key];
+            html += `${indentStr}  <span class="json-key">"${escapeHtml(key)}"</span><span class="json-colon">:</span> `;
+            html += formatJSON(value, nextIndent, maxDepth - 1);
+            if (index < keys.length - 1) {
+                html += '<span class="json-comma">,</span>';
+            }
+            html += '\n';
+        });
+        html += `${indentStr}<span class="json-bracket">}</span>`;
+        return html;
+    }
+
+    return escapeHtml(String(obj));
+}
+
+// Escape HTML characters
+function escapeHtml(text) {
+    if (typeof text !== 'string') {
+        text = String(text);
+    }
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Format response with summary information
+function formatResponse(data, responseId, includeSummary = true) {
+    let html = '';
+    
+    // Add summary if data has count or data array (unless explicitly disabled)
+    if (includeSummary && (data.count !== undefined || (data.data && Array.isArray(data.data)))) {
+        const count = data.count !== undefined ? data.count : (data.data ? data.data.length : 0);
+        html += `<div style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 8px; border-left: 4px solid #667eea;">
+            <strong style="color: #667eea; font-size: 1.05em;">📊 Total Records:</strong> <span class="response-count" style="font-size: 1.1em;">${count}</span>
+        </div>`;
+    }
+
+    // Format the JSON with syntax highlighting
+    html += '<pre style="margin: 0;">';
+    html += formatJSON(data);
+    html += '</pre>';
+
+    return html;
+}
+
 // Load statistics on page load
 async function loadStats() {
     debug('Loading statistics...');
@@ -130,29 +236,23 @@ async function testEndpoint(url, responseId, btnElement = null) {
             };
         }
 
-        // Escape HTML in JSON string
-        const jsonStr = JSON.stringify(data, null, 2);
-        const escapedJson = jsonStr
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        // Format JSON with syntax highlighting
+        const formattedJson = formatResponse(data, responseId);
 
         const statusClass = response.ok ? 'success' : 'error';
         const statusBadge = response.ok 
             ? `<span class="response-code ${statusClass}">${response.status} ${response.statusText}</span>`
             : `<span class="response-code ${statusClass}">${response.status} ${response.statusText}</span>`;
 
-                const responseHtml = `
-                    <div class="response-header">
-                        <span class="response-title">Response</span>
-                        ${statusBadge}
-                        <span style="color: #666; font-size: 0.85em;">(${responseTime}ms)</span>
-                        <button class="copy-btn" data-copy-target="${responseId}-data">Copy</button>
-                    </div>
-                    <div class="response-body" id="${responseId}-data">${escapedJson}</div>
-                `;
+        const responseHtml = `
+            <div class="response-header">
+                <span class="response-title">Response</span>
+                ${statusBadge}
+                <span style="color: #666; font-size: 0.85em;">(${responseTime}ms)</span>
+                <button class="copy-btn" data-copy-target="${responseId}-data">Copy</button>
+            </div>
+            <div class="response-body" id="${responseId}-data">${formattedJson}</div>
+        `;
 
                 responseEl.innerHTML = responseHtml;
                 
@@ -285,14 +385,28 @@ async function testSearch(btnElement = null) {
             };
         }
 
-        // Escape HTML in JSON string
-        const jsonStr = JSON.stringify(data, null, 2);
-        const escapedJson = jsonStr
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+                // Format JSON with syntax highlighting and add search summary
+                let formattedJson = '';
+                
+                // Add search summary first if available
+                if (data.counts) {
+                    const counts = data.counts;
+                    formattedJson += `
+                        <div style="margin-bottom: 15px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 10px;">
+                                ${counts.regions > 0 ? `<div><strong style="color: #667eea;">Regions:</strong> <span class="response-count">${counts.regions}</span></div>` : ''}
+                                ${counts.provinces > 0 ? `<div><strong style="color: #667eea;">Provinces:</strong> <span class="response-count">${counts.provinces}</span></div>` : ''}
+                                ${counts.cities > 0 ? `<div><strong style="color: #667eea;">Cities:</strong> <span class="response-count">${counts.cities}</span></div>` : ''}
+                                ${counts.municipalities > 0 ? `<div><strong style="color: #667eea;">Municipalities:</strong> <span class="response-count">${counts.municipalities}</span></div>` : ''}
+                                ${counts.barangays > 0 ? `<div><strong style="color: #667eea;">Barangays:</strong> <span class="response-count">${counts.barangays}</span></div>` : ''}
+                            </div>
+                            <div><strong style="color: #667eea;">Total Results:</strong> <span class="response-count" style="font-size: 1.1em;">${counts.total}</span></div>
+                        </div>
+                    `;
+                }
+
+                // Format the JSON data (without summary since we added it above)
+                formattedJson += formatResponse(data, 'search-data', false);
 
                 const responseHtml = `
                     <div class="response-header">
@@ -303,7 +417,7 @@ async function testSearch(btnElement = null) {
                         <span style="color: #666; font-size: 0.85em;">(${responseTime}ms)</span>
                         <button class="copy-btn" data-copy-target="search-data">Copy</button>
                     </div>
-                    <div class="response-body" id="search-data">${escapedJson}</div>
+                    <div class="response-body" id="search-data">${formattedJson}</div>
                 `;
 
                 responseEl.innerHTML = responseHtml;
@@ -351,7 +465,19 @@ function copyToClipboard(elementId, buttonElement = null) {
         return;
     }
     
-    const text = element.textContent || element.innerText;
+    // Get raw JSON text (without HTML formatting)
+    let text;
+    if (element.querySelector('pre')) {
+        // Extract the actual JSON by parsing the formatted HTML
+        const pre = element.querySelector('pre');
+        text = pre.textContent || pre.innerText;
+    } else {
+        text = element.textContent || element.innerText;
+    }
+    
+    // Clean up the text (remove extra whitespace from formatting)
+    text = text.replace(/\n\s*\n/g, '\n').trim();
+    
     if (!text) {
         alert('Nothing to copy');
         return;

@@ -61,6 +61,20 @@ async function insertCity(data) {
   ]);
 }
 
+// Helper function to insert district
+async function insertDistrict(data) {
+  await db.run(`
+    INSERT OR REPLACE INTO districts (
+      code, name, province_code, updated_at
+    )
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+  `, [
+    data.code,
+    data.name,
+    data.province_code
+  ]);
+}
+
 // Helper function to insert municipality
 async function insertMunicipality(data) {
   await db.run(`
@@ -144,6 +158,30 @@ function extractProvinceCode(code) {
   return normalized.substring(0, 4) + '00000';
 }
 
+// Extract district code from any PSGC code
+function extractDistrictCode(code) {
+  const normalized = normalizeCode(code);
+  if (!normalized) return null;
+  // District code pattern: XXXXX0000 (5 digits + 4 zeros)
+  // But we need to make sure it's not a province (XXXX00000)
+  if (normalized.match(/^\d{5}0000$/)) {
+    // Check if it's actually a province (4 digits + 5 zeros)
+    const provincePattern = normalized.substring(0, 4) + '00000';
+    if (normalized !== provincePattern) {
+      return normalized;
+    }
+  }
+  // For cities/municipalities/barangays, extract parent district if it exists
+  if (normalized.length >= 5 && !normalized.match(/^\d{2}0000000$/) && !normalized.match(/^\d{4}00000$/)) {
+    const districtCode = normalized.substring(0, 5) + '0000';
+    // Only return if it's a valid district pattern (not a province or region)
+    if (districtCode.match(/^\d{5}0000$/) && !districtCode.match(/^\d{4}00000$/)) {
+      return districtCode;
+    }
+  }
+  return null;
+}
+
 // Main import function
 async function importData(filePath, format = 'json') {
   console.log(`Importing data from ${filePath}...`);
@@ -162,13 +200,14 @@ async function importData(filePath, format = 'json') {
 
   console.log(`Processing ${data.length} records...\n`);
   
-  let regions = 0, provinces = 0, cities = 0, municipalities = 0, barangays = 0;
+  let regions = 0, provinces = 0, districts = 0, cities = 0, municipalities = 0, barangays = 0;
   let errors = 0;
   const errorLog = [];
 
   // Separate data by type first (important for foreign keys)
   const regionsList = [];
   const provincesList = [];
+  const districtsList = [];
   const citiesList = [];
   const municipalitiesList = [];
   const barangaysList = [];
@@ -176,6 +215,7 @@ async function importData(filePath, format = 'json') {
   data.forEach(item => {
     const code = normalizeCode(item.code || item.Code || item.CODE);
     const type = item.type || item.Type || item.TYPE;
+    const name = (item.name || item.Name || item.NAME || '').trim();
     
     if (!code || code === '000000000') {
       return;
@@ -184,7 +224,8 @@ async function importData(filePath, format = 'json') {
     // Normalize all codes in the item
     const normalizedItem = {
       ...item,
-      code: code
+      code: code,
+      name: name
     };
 
     // Extract missing codes
@@ -194,10 +235,30 @@ async function importData(filePath, format = 'json') {
       normalizedItem.region_code = normalizeCode(normalizedItem.region_code);
     }
 
-    if (!normalizedItem.province_code && code.match(/^\d{6}/)) {
-      normalizedItem.province_code = extractProvinceCode(code);
-    } else if (normalizedItem.province_code) {
+    // Extract province code based on code pattern
+    if (!normalizedItem.province_code) {
+      if (code.match(/^\d{5}0000$/)) {
+        // District: extract province from first 4 digits
+        normalizedItem.province_code = extractProvinceCode(code);
+      } else if (code.match(/^\d{6}000$/)) {
+        // City/Municipality: extract province from first 4 digits
+        normalizedItem.province_code = extractProvinceCode(code);
+      } else if (!code.match(/^\d{2}0000000$/) && !code.match(/^\d{4}00000$/)) {
+        // Barangay or other: extract province from first 4 digits
+        normalizedItem.province_code = extractProvinceCode(code);
+      }
+    } else {
       normalizedItem.province_code = normalizeCode(normalizedItem.province_code);
+    }
+
+    // Extract district code if applicable
+    if (!normalizedItem.district_code && (code.match(/^\d{6}000$/) || !code.match(/000000$/))) {
+      const districtCode = extractDistrictCode(code);
+      if (districtCode && !districtCode.match(/^\d{4}00000$/)) {
+        normalizedItem.district_code = districtCode;
+      }
+    } else if (normalizedItem.district_code) {
+      normalizedItem.district_code = normalizeCode(normalizedItem.district_code);
     }
 
     if (normalizedItem.city_code) {
@@ -208,16 +269,34 @@ async function importData(filePath, format = 'json') {
       normalizedItem.municipality_code = normalizeCode(normalizedItem.municipality_code);
     }
 
-    // Classify by code pattern
+    // Classify by code pattern (check in order of specificity)
     if (type === 'Region' || code.match(/^\d{2}0000000$/)) {
       regionsList.push(normalizedItem);
     } else if (type === 'Province' || code.match(/^\d{4}00000$/)) {
       provincesList.push(normalizedItem);
-    } else if (type === 'City' || (code.match(/^\d{6}000$/) && (normalizedItem.city_code || normalizedItem.province_code))) {
-      citiesList.push(normalizedItem);
-    } else if (type === 'Municipality' || (code.match(/^\d{6}000$/) && !normalizedItem.city_code)) {
-      municipalitiesList.push(normalizedItem);
+    } else if (code.match(/^\d{6}000$/)) {
+      // City or Municipality: 6 digits + 3 zeros (e.g., 123456000)
+      // Distinguish by name pattern or fields
+      const isCity = type === 'City' || 
+                     name.toLowerCase().includes('city of') || 
+                     name.toLowerCase().endsWith(' city') ||
+                     normalizedItem.city_class ||
+                     normalizedItem.cityCode;
+      
+      if (isCity) {
+        citiesList.push(normalizedItem);
+      } else {
+        municipalitiesList.push(normalizedItem);
+      }
+    } else if (type === 'District' || (code.match(/^\d{5}0000$/) && 
+               !name.toLowerCase().includes('city') && 
+               !name.toLowerCase().includes('region') &&
+               !name.toLowerCase().includes('province'))) {
+      // District: 5 digits + 4 zeros (e.g., 123450000)
+      // Exclude cities, regions, and provinces that might match this pattern
+      districtsList.push(normalizedItem);
     } else if (type === 'Barangay' || !code.match(/000000$/)) {
+      // Barangay: 9 digits not ending in 6 zeros
       barangaysList.push(normalizedItem);
     }
   });
@@ -264,6 +343,28 @@ async function importData(filePath, format = 'json') {
   }
   console.log(`  ✓ Imported ${provinces} provinces\n`);
 
+  console.log(`Importing ${districtsList.length} districts...`);
+  for (const item of districtsList) {
+    try {
+      // Ensure province exists
+      if (item.province_code) {
+        const provinceExists = await db.get('SELECT code FROM provinces WHERE code = ?', [item.province_code]);
+        if (!provinceExists) {
+          errors++;
+          continue;
+        }
+      }
+      await insertDistrict(item);
+      districts++;
+    } catch (error) {
+      errors++;
+      const errorMsg = `Error inserting district ${item.code} (${item.name}): ${error.message}`;
+      errorLog.push(errorMsg);
+      if (errors <= 25) console.error(`  ${errorMsg}`);
+    }
+  }
+  console.log(`  ✓ Imported ${districts} districts\n`);
+
   console.log(`Importing ${citiesList.length} cities...`);
   for (const item of citiesList) {
     try {
@@ -286,6 +387,13 @@ async function importData(filePath, format = 'json') {
           // Skip cities with missing provinces for now
           errors++;
           continue;
+        }
+      }
+      // Clear district_code if it doesn't exist (foreign key constraint)
+      if (item.district_code) {
+        const districtExists = await db.get('SELECT code FROM districts WHERE code = ?', [item.district_code]);
+        if (!districtExists) {
+          item.district_code = null;
         }
       }
       await insertCity(item);
@@ -321,6 +429,13 @@ async function importData(filePath, format = 'json') {
           // Skip municipalities with missing provinces
           errors++;
           continue;
+        }
+      }
+      // Clear district_code if it doesn't exist (foreign key constraint)
+      if (item.district_code) {
+        const districtExists = await db.get('SELECT code FROM districts WHERE code = ?', [item.district_code]);
+        if (!districtExists) {
+          item.district_code = null;
         }
       }
       await insertMunicipality(item);
@@ -370,10 +485,11 @@ async function importData(filePath, format = 'json') {
   console.log('✅ Import completed!');
   console.log(`- Regions: ${regions}`);
   console.log(`- Provinces: ${provinces}`);
+  console.log(`- Districts: ${districts}`);
   console.log(`- Cities: ${cities}`);
   console.log(`- Municipalities: ${municipalities}`);
   console.log(`- Barangays: ${barangays}`);
-  console.log(`Total: ${regions + provinces + cities + municipalities + barangays} records`);
+  console.log(`Total: ${regions + provinces + districts + cities + municipalities + barangays} records`);
   if (errors > 0) {
     console.log(`\n⚠️  ${errors} errors encountered during import`);
     if (errorLog.length > 50) {
