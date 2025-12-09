@@ -99,8 +99,8 @@ function formatResponse(data, responseId, includeSummary = true) {
     // Add summary if data has count or data array (unless explicitly disabled)
     if (includeSummary && (data.count !== undefined || (data.data && Array.isArray(data.data)))) {
         const count = data.count !== undefined ? data.count : (data.data ? data.data.length : 0);
-        html += `<div style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 8px; border-left: 4px solid #667eea;">
-            <strong style="color: #667eea; font-size: 1.05em;">📊 Total Records:</strong> <span class="response-count" style="font-size: 1.1em;">${count}</span>
+        html += `<div style="margin-bottom: 15px; padding: 12px; background: linear-gradient(135deg, rgba(0, 56, 168, 0.1) 0%, rgba(206, 17, 38, 0.1) 100%); border-radius: 8px; border-left: 4px solid #0038A8;">
+            <strong style="color: #0038A8; font-size: 1.05em;">📊 Total Records:</strong> <span class="response-count" style="font-size: 1.1em;">${count}</span>
         </div>`;
     }
 
@@ -116,7 +116,7 @@ function formatResponse(data, responseId, includeSummary = true) {
 async function loadStats() {
     debug('Loading statistics...');
     try {
-        const [regions, provinces, cities, barangays] = await Promise.all([
+        const [regions, provinces, cities, municipalities, barangays] = await Promise.all([
             fetch(`${API_BASE}/api/v1/regions`).then(r => {
                 if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
                 return r.json();
@@ -138,7 +138,14 @@ async function loadStats() {
                 debug('Error fetching cities:', e);
                 return { count: 0 };
             }),
-            fetch(`${API_BASE}/api/v1/barangays?limit=1`).then(r => {
+            fetch(`${API_BASE}/api/v1/municipalities`).then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                return r.json();
+            }).catch(e => {
+                debug('Error fetching municipalities:', e);
+                return { count: 0 };
+            }),
+            fetch(`${API_BASE}/api/v1/barangays?limit=10000`).then(r => {
                 if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
                 return r.json();
             }).catch(e => {
@@ -150,6 +157,7 @@ async function loadStats() {
         document.getElementById('regions-count').textContent = regions.count || 0;
         document.getElementById('provinces-count').textContent = provinces.count || 0;
         document.getElementById('cities-count').textContent = cities.count || 0;
+        document.getElementById('municipalities-count').textContent = municipalities.count || 0;
         document.getElementById('barangays-count').textContent = barangays.count || 0;
         debug('Statistics loaded successfully');
     } catch (error) {
@@ -158,6 +166,7 @@ async function loadStats() {
         document.getElementById('regions-count').textContent = '?';
         document.getElementById('provinces-count').textContent = '?';
         document.getElementById('cities-count').textContent = '?';
+        document.getElementById('municipalities-count').textContent = '?';
         document.getElementById('barangays-count').textContent = '?';
     }
 }
@@ -392,15 +401,15 @@ async function testSearch(btnElement = null) {
                 if (data.counts) {
                     const counts = data.counts;
                     formattedJson += `
-                        <div style="margin-bottom: 15px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div style="margin-bottom: 15px; padding: 15px; background: linear-gradient(135deg, rgba(0, 56, 168, 0.1) 0%, rgba(206, 17, 38, 0.1) 100%); border-radius: 8px; border-left: 4px solid #0038A8;">
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 10px;">
-                                ${counts.regions > 0 ? `<div><strong style="color: #667eea;">Regions:</strong> <span class="response-count">${counts.regions}</span></div>` : ''}
-                                ${counts.provinces > 0 ? `<div><strong style="color: #667eea;">Provinces:</strong> <span class="response-count">${counts.provinces}</span></div>` : ''}
-                                ${counts.cities > 0 ? `<div><strong style="color: #667eea;">Cities:</strong> <span class="response-count">${counts.cities}</span></div>` : ''}
-                                ${counts.municipalities > 0 ? `<div><strong style="color: #667eea;">Municipalities:</strong> <span class="response-count">${counts.municipalities}</span></div>` : ''}
-                                ${counts.barangays > 0 ? `<div><strong style="color: #667eea;">Barangays:</strong> <span class="response-count">${counts.barangays}</span></div>` : ''}
+                                ${counts.regions > 0 ? `<div><strong style="color: #0038A8;">Regions:</strong> <span class="response-count">${counts.regions}</span></div>` : ''}
+                                ${counts.provinces > 0 ? `<div><strong style="color: #0038A8;">Provinces:</strong> <span class="response-count">${counts.provinces}</span></div>` : ''}
+                                ${counts.cities > 0 ? `<div><strong style="color: #0038A8;">Cities:</strong> <span class="response-count">${counts.cities}</span></div>` : ''}
+                                ${counts.municipalities > 0 ? `<div><strong style="color: #0038A8;">Municipalities:</strong> <span class="response-count">${counts.municipalities}</span></div>` : ''}
+                                ${counts.barangays > 0 ? `<div><strong style="color: #0038A8;">Barangays:</strong> <span class="response-count">${counts.barangays}</span></div>` : ''}
                             </div>
-                            <div><strong style="color: #667eea;">Total Results:</strong> <span class="response-count" style="font-size: 1.1em;">${counts.total}</span></div>
+                            <div><strong style="color: #0038A8;">Total Results:</strong> <span class="response-count" style="font-size: 1.1em;">${counts.total}</span></div>
                         </div>
                     `;
                 }

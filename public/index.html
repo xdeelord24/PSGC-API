@@ -13,10 +13,31 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0038A8 0%, #CE1126 50%, #FCD116 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             padding: 20px;
             color: #333;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(180deg, #0038A8 0%, #0038A8 25%, #FFFFFF 25%, #FFFFFF 50%, #CE1126 50%, #CE1126 75%, #FFFFFF 75%, #FFFFFF 100%);
+            opacity: 0.15;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body > * {
+            position: relative;
+            z-index: 1;
         }
 
         .container {
@@ -25,18 +46,31 @@
         }
 
         header {
-            background: white;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border-radius: 12px;
             padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 56, 168, 0.2);
             position: relative;
+            border: 2px solid rgba(0, 56, 168, 0.1);
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #0038A8 0%, #CE1126 50%, #FCD116 100%);
         }
 
         h1 {
-            color: #667eea;
+            color: #0038A8;
             font-size: 2.5em;
             margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .subtitle {
@@ -58,13 +92,15 @@
         }
 
         .status-indicator.online {
-            background: #d4edda;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
             color: #155724;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
         }
 
         .status-indicator.offline {
-            background: #f8d7da;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
             color: #721c24;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
         }
 
         .status-dot {
@@ -77,10 +113,12 @@
         .status-indicator.online .status-dot {
             background: #28a745;
             animation: pulse 2s infinite;
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
         }
 
         .status-indicator.offline .status-dot {
             background: #dc3545;
+            box-shadow: 0 0 8px rgba(220, 53, 69, 0.6);
         }
 
         @keyframes pulse {
@@ -96,17 +134,39 @@
         }
 
         .stat-card {
-            background: white;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 6px 20px rgba(0, 56, 168, 0.15);
             text-align: center;
+            border: 2px solid rgba(0, 56, 168, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0038A8 0%, #CE1126 50%, #FCD116 100%);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 56, 168, 0.25);
         }
 
         .stat-number {
             font-size: 2.5em;
             font-weight: bold;
-            color: #667eea;
+            background: linear-gradient(135deg, #0038A8 0%, #CE1126 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 5px;
         }
 
@@ -118,19 +178,33 @@
         }
 
         .endpoints-section {
-            background: white;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border-radius: 12px;
             padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 56, 168, 0.15);
             margin-bottom: 30px;
+            border: 2px solid rgba(0, 56, 168, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .endpoints-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0038A8 0%, #CE1126 50%, #FCD116 100%);
         }
 
         .section-title {
             font-size: 1.8em;
-            color: #333;
+            color: #0038A8;
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 3px solid #667eea;
+            border-bottom: 3px solid;
+            border-image: linear-gradient(90deg, #0038A8 0%, #CE1126 50%, #FCD116 100%) 1;
         }
 
         .endpoint-group {
@@ -138,17 +212,19 @@
         }
 
         .endpoint-item {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-left: 4px solid #0038A8;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 15px;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 56, 168, 0.1);
         }
 
         .endpoint-item:hover {
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 6px 20px rgba(0, 56, 168, 0.25);
             transform: translateX(5px);
+            border-left-color: #CE1126;
         }
 
         .endpoint-header {
@@ -180,11 +256,12 @@
             flex: 1;
             min-width: 200px;
             font-size: 0.95em;
-            color: #667eea;
+            color: #0038A8;
+            border: 1px solid rgba(0, 56, 168, 0.2);
         }
 
         .test-btn {
-            background: #667eea;
+            background: linear-gradient(135deg, #0038A8 0%, #0048C8 100%);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -192,17 +269,20 @@
             cursor: pointer;
             font-weight: bold;
             transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(0, 56, 168, 0.3);
         }
 
         .test-btn:hover {
-            background: #5568d3;
+            background: linear-gradient(135deg, #CE1126 0%, #E81A3A 100%);
             transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(206, 17, 38, 0.4);
         }
 
         .test-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
         .endpoint-description {
@@ -332,18 +412,19 @@
             margin: 8px 0;
             padding: 8px;
             background: rgba(255, 255, 255, 0.02);
-            border-left: 2px solid #667eea;
+            border-left: 2px solid #0038A8;
             border-radius: 4px;
         }
 
         .response-count {
-            background: #667eea;
+            background: linear-gradient(135deg, #0038A8 0%, #CE1126 100%);
             color: white;
             padding: 2px 8px;
             border-radius: 12px;
             font-size: 0.85em;
             font-weight: bold;
             margin-left: 10px;
+            box-shadow: 0 2px 6px rgba(0, 56, 168, 0.3);
         }
 
         .loading {
@@ -361,11 +442,24 @@
         }
 
         .search-box {
-            background: white;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 6px 20px rgba(0, 56, 168, 0.15);
+            border: 2px solid rgba(0, 56, 168, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .search-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0038A8 0%, #CE1126 50%, #FCD116 100%);
         }
 
         .search-input {
@@ -379,17 +473,19 @@
 
         .search-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #0038A8;
+            box-shadow: 0 0 0 3px rgba(0, 56, 168, 0.1);
         }
 
         .example-input {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
+            background: linear-gradient(135deg, #FFF8DC 0%, #FFE4B5 100%);
+            border: 2px solid #FCD116;
             border-radius: 5px;
             padding: 10px;
             margin-top: 10px;
             font-size: 0.9em;
             color: #856404;
+            box-shadow: 0 2px 8px rgba(252, 209, 22, 0.2);
         }
 
         .example-input input {
@@ -402,7 +498,7 @@
         }
 
         .copy-btn {
-            background: #6c757d;
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
             color: white;
             border: none;
             padding: 5px 10px;
@@ -410,10 +506,14 @@
             cursor: pointer;
             font-size: 0.85em;
             margin-left: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
         }
 
         .copy-btn:hover {
-            background: #5a6268;
+            background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
 
         /* Scrollbar styling */
@@ -428,12 +528,12 @@
         }
 
         .response-body::-webkit-scrollbar-thumb {
-            background: #667eea;
+            background: linear-gradient(135deg, #0038A8 0%, #CE1126 100%);
             border-radius: 5px;
         }
 
         .response-body::-webkit-scrollbar-thumb:hover {
-            background: #5568d3;
+            background: linear-gradient(135deg, #0048C8 0%, #E81A3A 100%);
         }
 
         /* Code block improvements */
@@ -444,10 +544,11 @@
 
         /* Highlight matching text in search */
         .highlight {
-            background: rgba(255, 235, 59, 0.3);
+            background: linear-gradient(135deg, rgba(252, 209, 22, 0.4) 0%, rgba(255, 235, 59, 0.4) 100%);
             padding: 2px 4px;
             border-radius: 3px;
             font-weight: bold;
+            border: 1px solid rgba(252, 209, 22, 0.5);
         }
     </style>
 </head>
@@ -476,6 +577,10 @@
                 <div class="stat-label">Cities</div>
             </div>
             <div class="stat-card">
+                <div class="stat-number" id="municipalities-count">-</div>
+                <div class="stat-label">Municipalities</div>
+            </div>
+            <div class="stat-card">
                 <div class="stat-number" id="barangays-count">-</div>
                 <div class="stat-label">Barangays</div>
             </div>
@@ -495,7 +600,7 @@
             <h2 class="section-title">API Endpoints</h2>
 
             <div class="endpoint-group">
-                <h3 style="margin-bottom: 15px; color: #667eea;">📍 Regions</h3>
+                <h3 style="margin-bottom: 15px; color: #0038A8;">📍 Regions</h3>
                 
                 <div class="endpoint-item">
                     <div class="endpoint-header">
@@ -523,7 +628,7 @@
             </div>
 
             <div class="endpoint-group">
-                <h3 style="margin-bottom: 15px; color: #667eea;">🏛️ Provinces</h3>
+                <h3 style="margin-bottom: 15px; color: #0038A8;">🏛️ Provinces</h3>
                 
                 <div class="endpoint-item">
                     <div class="endpoint-header">
@@ -537,7 +642,7 @@
             </div>
 
             <div class="endpoint-group">
-                <h3 style="margin-bottom: 15px; color: #667eea;">🏙️ Cities</h3>
+                <h3 style="margin-bottom: 15px; color: #0038A8;">🏙️ Cities</h3>
                 
                 <div class="endpoint-item">
                     <div class="endpoint-header">
@@ -551,7 +656,7 @@
             </div>
 
             <div class="endpoint-group">
-                <h3 style="margin-bottom: 15px; color: #667eea;">🏘️ Municipalities</h3>
+                <h3 style="margin-bottom: 15px; color: #0038A8;">🏘️ Municipalities</h3>
                 
                 <div class="endpoint-item">
                     <div class="endpoint-header">
@@ -565,7 +670,7 @@
             </div>
 
             <div class="endpoint-group">
-                <h3 style="margin-bottom: 15px; color: #667eea;">🏠 Barangays</h3>
+                <h3 style="margin-bottom: 15px; color: #0038A8;">🏠 Barangays</h3>
                 
                 <div class="endpoint-item">
                     <div class="endpoint-header">

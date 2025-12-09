@@ -95,7 +95,29 @@ async function insertMunicipality(data) {
 }
 
 // Helper function to insert barangay
+// PSGC Pattern: Barangay code = XXYYZZAAA (9 digits, last 3 are NOT zeros)
+// Parent City/Municipality = XXYYZZ000 (first 6 digits + 000)
 async function insertBarangay(data) {
+  // Extract city/municipality code from barangay code (first 6 digits + 000)
+  // According to PSGC: XXYYZZ000 = City/Municipality code
+  const cityMuniCode = data.code.substring(0, 6) + '000';
+  
+  // Determine if parent is a city or municipality
+  let cityCode = data.city_code || null;
+  let municipalityCode = data.municipality_code || null;
+  
+  // If not explicitly set, check if parent exists as city or municipality
+  if (!cityCode && !municipalityCode) {
+    const cityExists = await db.get('SELECT code FROM cities WHERE code = ?', [cityMuniCode]);
+    const muniExists = await db.get('SELECT code FROM municipalities WHERE code = ?', [cityMuniCode]);
+    
+    if (cityExists) {
+      cityCode = cityMuniCode;
+    } else if (muniExists) {
+      municipalityCode = cityMuniCode;
+    }
+  }
+  
   await db.run(`
     INSERT OR REPLACE INTO barangays (
       code, name, city_code, municipality_code, 
@@ -105,8 +127,8 @@ async function insertBarangay(data) {
   `, [
     data.code,
     data.name,
-    data.city_code || null,
-    data.municipality_code || null,
+    cityCode,
+    municipalityCode,
     data.province_code,
     data.region_code,
     data.urban_rural || null
@@ -158,25 +180,19 @@ function extractProvinceCode(code) {
   return normalized.substring(0, 4) + '00000';
 }
 
-// Extract district code from any PSGC code
+// Extract district code from any PSGC code (if present)
+// Note: Districts are not part of standard PSGC pattern but may exist in some data
 function extractDistrictCode(code) {
   const normalized = normalizeCode(code);
   if (!normalized) return null;
-  // District code pattern: XXXXX0000 (5 digits + 4 zeros)
-  // But we need to make sure it's not a province (XXXX00000)
+  
+  // District code pattern: 5 digits + 4 zeros (if it exists in data)
+  // This is NOT part of standard PSGC but may be present
   if (normalized.match(/^\d{5}0000$/)) {
-    // Check if it's actually a province (4 digits + 5 zeros)
+    // Make sure it's not a province (4 digits + 5 zeros)
     const provincePattern = normalized.substring(0, 4) + '00000';
     if (normalized !== provincePattern) {
       return normalized;
-    }
-  }
-  // For cities/municipalities/barangays, extract parent district if it exists
-  if (normalized.length >= 5 && !normalized.match(/^\d{2}0000000$/) && !normalized.match(/^\d{4}00000$/)) {
-    const districtCode = normalized.substring(0, 5) + '0000';
-    // Only return if it's a valid district pattern (not a province or region)
-    if (districtCode.match(/^\d{5}0000$/) && !districtCode.match(/^\d{4}00000$/)) {
-      return districtCode;
     }
   }
   return null;
@@ -235,30 +251,38 @@ async function importData(filePath, format = 'json') {
       normalizedItem.region_code = normalizeCode(normalizedItem.region_code);
     }
 
-    // Extract province code based on code pattern
+    // Extract province code based on PSGC pattern
+    // Province code = first 4 digits (XXYY) + 5 zeros = XXYY00000
     if (!normalizedItem.province_code) {
-      if (code.match(/^\d{5}0000$/)) {
-        // District: extract province from first 4 digits
-        normalizedItem.province_code = extractProvinceCode(code);
-      } else if (code.match(/^\d{6}000$/)) {
-        // City/Municipality: extract province from first 4 digits
-        normalizedItem.province_code = extractProvinceCode(code);
-      } else if (!code.match(/^\d{2}0000000$/) && !code.match(/^\d{4}00000$/)) {
-        // Barangay or other: extract province from first 4 digits
+      // For any code that's not a region or province itself, extract province code
+      if (!code.match(/^\d{2}0000000$/) && !code.match(/^\d{4}00000$/)) {
+        // Extract province from first 4 digits: XXYY00000
         normalizedItem.province_code = extractProvinceCode(code);
       }
     } else {
       normalizedItem.province_code = normalizeCode(normalizedItem.province_code);
     }
 
-    // Extract district code if applicable
-    if (!normalizedItem.district_code && (code.match(/^\d{6}000$/) || !code.match(/000000$/))) {
-      const districtCode = extractDistrictCode(code);
-      if (districtCode && !districtCode.match(/^\d{4}00000$/)) {
-        normalizedItem.district_code = districtCode;
-      }
+    // Extract district code if applicable (districts are not standard PSGC but may exist)
+    // District code pattern: 5 digits + 4 zeros (if present in data)
+    if (!normalizedItem.district_code && code.match(/^\d{5}0000$/) && 
+        !code.match(/^\d{4}00000$/) && !code.match(/^\d{2}0000000$/)) {
+      normalizedItem.district_code = code;
     } else if (normalizedItem.district_code) {
       normalizedItem.district_code = normalizeCode(normalizedItem.district_code);
+    }
+    
+    // For cities/municipalities/barangays, extract parent city/municipality code if applicable
+    if (code.match(/^\d{6}000$/) || (code.match(/^\d{9}$/) && !code.match(/000$/))) {
+      // City/Municipality code = first 6 digits (XXYYZZ) + 3 zeros
+      const cityMuniCode = code.substring(0, 6) + '000';
+      if (code.match(/^\d{9}$/) && !code.match(/000$/)) {
+        // For barangays, set city_code or municipality_code based on parent
+        if (!normalizedItem.city_code && !normalizedItem.municipality_code) {
+          // Check if parent is a city or municipality (we'll determine this during import)
+          // For now, we'll set it during the barangay import phase
+        }
+      }
     }
 
     if (normalizedItem.city_code) {
@@ -269,17 +293,27 @@ async function importData(filePath, format = 'json') {
       normalizedItem.municipality_code = normalizeCode(normalizedItem.municipality_code);
     }
 
-    // Classify by code pattern (check in order of specificity)
+    // Classify by PSGC code pattern (check in order of specificity)
+    // Pattern: RR PP MM BBB (Region, Province, Municipality/City, Barangay)
+    
+    // 1. Region Code (XX0000000): 2 digits + 7 zeros
+    // Examples: 040000000 (Region IV-A), 130000000 (NCR)
     if (type === 'Region' || code.match(/^\d{2}0000000$/)) {
       regionsList.push(normalizedItem);
-    } else if (type === 'Province' || code.match(/^\d{4}00000$/)) {
+    } 
+    // 2. Province Code (XXYY00000): 4 digits + 5 zeros
+    // Examples: 042100000 (Laguna), 072200000 (Cebu)
+    else if (type === 'Province' || code.match(/^\d{4}00000$/)) {
       provincesList.push(normalizedItem);
-    } else if (code.match(/^\d{6}000$/)) {
-      // City or Municipality: 6 digits + 3 zeros (e.g., 123456000)
-      // Distinguish by name pattern or fields
+    } 
+    // 3. City/Municipality Code (XXYYZZ000): 6 digits + 3 zeros
+    // Examples: 137404000 (Quezon City), 137602000 (Makati)
+    else if (code.match(/^\d{6}000$/)) {
+      // Distinguish between City and Municipality
       const isCity = type === 'City' || 
                      name.toLowerCase().includes('city of') || 
                      name.toLowerCase().endsWith(' city') ||
+                     name.toLowerCase().includes('city') ||
                      normalizedItem.city_class ||
                      normalizedItem.cityCode;
       
@@ -288,15 +322,11 @@ async function importData(filePath, format = 'json') {
       } else {
         municipalitiesList.push(normalizedItem);
       }
-    } else if (type === 'District' || (code.match(/^\d{5}0000$/) && 
-               !name.toLowerCase().includes('city') && 
-               !name.toLowerCase().includes('region') &&
-               !name.toLowerCase().includes('province'))) {
-      // District: 5 digits + 4 zeros (e.g., 123450000)
-      // Exclude cities, regions, and provinces that might match this pattern
-      districtsList.push(normalizedItem);
-    } else if (type === 'Barangay' || !code.match(/000000$/)) {
-      // Barangay: 9 digits not ending in 6 zeros
+    } 
+    // 4. Barangay Code (XXYYZZAAA): 9 digits, last 3 digits are NOT all zeros
+    // Examples: 137602006 (Barangay San Lorenzo, Makati)
+    // Pattern: RR PP MM BBB where BBB != 000
+    else if (type === 'Barangay' || (code.match(/^\d{9}$/) && !code.match(/000$/))) {
       barangaysList.push(normalizedItem);
     }
   });
@@ -452,7 +482,7 @@ async function importData(filePath, format = 'json') {
   console.log(`Importing ${barangaysList.length} barangays...`);
   for (const item of barangaysList) {
     try {
-      // Ensure region and province exist
+      // Ensure region exists
       if (item.region_code) {
         const regionExists = await db.get('SELECT code FROM regions WHERE code = ?', [item.region_code]);
         if (!regionExists) {
@@ -464,13 +494,33 @@ async function importData(filePath, format = 'json') {
           });
         }
       }
+      
+      // Ensure province_code is set (extract from code if missing)
+      if (!item.province_code) {
+        item.province_code = extractProvinceCode(item.code);
+      }
+      
+      // Try to ensure province exists, but don't fail if it doesn't
       if (item.province_code) {
         const provinceExists = await db.get('SELECT code FROM provinces WHERE code = ?', [item.province_code]);
         if (!provinceExists) {
-          errors++;
-          continue;
+          // Try to create a basic province entry if we have region_code
+          if (item.region_code) {
+            try {
+              await insertProvince({
+                code: item.province_code,
+                name: `Province ${item.province_code.substring(0, 4)}`,
+                region_code: item.region_code,
+                island_group_code: null
+              });
+            } catch (provError) {
+              // If province creation fails, continue anyway (might be duplicate or other issue)
+              // Silently continue - province might already exist or have constraints
+            }
+          }
         }
       }
+      
       await insertBarangay(item);
       barangays++;
     } catch (error) {
