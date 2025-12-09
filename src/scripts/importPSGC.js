@@ -293,7 +293,7 @@ async function importData(filePath, format = 'json') {
       normalizedItem.municipality_code = normalizeCode(normalizedItem.municipality_code);
     }
 
-    // Classify by PSGC code pattern (check in order of specificity)
+    // Classify by PSGC code pattern (check in order of specificity - most specific first)
     // Pattern: RR PP MM BBB (Region, Province, Municipality/City, Barangay)
     
     // 1. Region Code (XX0000000): 2 digits + 7 zeros
@@ -306,16 +306,31 @@ async function importData(filePath, format = 'json') {
     else if (type === 'Province' || code.match(/^\d{4}00000$/)) {
       provincesList.push(normalizedItem);
     } 
-    // 3. City/Municipality Code (XXYYZZ000): 6 digits + 3 zeros
+    // 3. District Code (XXYYZ0000): 5 digits + 4 zeros (NOT standard PSGC but may exist)
+    // Check this BEFORE city/municipality to avoid misclassification
+    else if (type === 'District' || (code.match(/^\d{5}0000$/) && 
+               !name.toLowerCase().includes('city') && 
+               !name.toLowerCase().includes('region') &&
+               !name.toLowerCase().includes('province'))) {
+      districtsList.push(normalizedItem);
+    }
+    // 4. City/Municipality Code (XXYYZZ000): 6 digits + 3 zeros
     // Examples: 137404000 (Quezon City), 137602000 (Makati)
     else if (code.match(/^\d{6}000$/)) {
       // Distinguish between City and Municipality
+      // More precise city detection to avoid misclassifying municipalities
       const isCity = type === 'City' || 
                      name.toLowerCase().includes('city of') || 
                      name.toLowerCase().endsWith(' city') ||
-                     name.toLowerCase().includes('city') ||
+                     (name.toLowerCase().includes('city') && (
+                       name.toLowerCase().includes('highly urbanized') ||
+                       name.toLowerCase().includes('independent component') ||
+                       name.toLowerCase().includes('component city') ||
+                       name.toLowerCase().startsWith('city of')
+                     )) ||
                      normalizedItem.city_class ||
-                     normalizedItem.cityCode;
+                     normalizedItem.cityCode ||
+                     normalizedItem.city_classification;
       
       if (isCity) {
         citiesList.push(normalizedItem);
@@ -323,11 +338,17 @@ async function importData(filePath, format = 'json') {
         municipalitiesList.push(normalizedItem);
       }
     } 
-    // 4. Barangay Code (XXYYZZAAA): 9 digits, last 3 digits are NOT all zeros
+    // 5. Barangay Code (XXYYZZAAA): 9 digits, last 3 digits are NOT all zeros
     // Examples: 137602006 (Barangay San Lorenzo, Makati)
     // Pattern: RR PP MM BBB where BBB != 000
+    // Must be exactly 9 digits and NOT end in 000
     else if (type === 'Barangay' || (code.match(/^\d{9}$/) && !code.match(/000$/))) {
       barangaysList.push(normalizedItem);
+    }
+    // Unclassified items (should not happen with valid PSGC data)
+    else {
+      // Log unclassified items for debugging
+      console.warn(`⚠️  Unclassified item: code=${code}, name="${name}", type="${type}"`);
     }
   });
 
@@ -398,7 +419,10 @@ async function importData(filePath, format = 'json') {
   console.log(`Importing ${citiesList.length} cities...`);
   for (const item of citiesList) {
     try {
-      // Ensure region exists
+      // Ensure region exists or auto-extract it
+      if (!item.region_code) {
+        item.region_code = extractRegionCode(item.code);
+      }
       if (item.region_code) {
         const regionExists = await db.get('SELECT code FROM regions WHERE code = ?', [item.region_code]);
         if (!regionExists) {
@@ -410,13 +434,35 @@ async function importData(filePath, format = 'json') {
           });
         }
       }
-      // Ensure province exists if specified
+      // Ensure province exists or auto-extract it
+      if (!item.province_code) {
+        item.province_code = extractProvinceCode(item.code);
+      }
       if (item.province_code) {
         const provinceExists = await db.get('SELECT code FROM provinces WHERE code = ?', [item.province_code]);
         if (!provinceExists) {
-          // Skip cities with missing provinces for now
-          errors++;
-          continue;
+          // Try to create province if region exists
+          if (item.region_code) {
+            try {
+              await insertProvince({
+                code: item.province_code,
+                name: `Province ${item.province_code.substring(0, 4)}`,
+                region_code: item.region_code,
+                island_group_code: null
+              });
+            } catch (provError) {
+              // If province creation fails, skip this city
+              errors++;
+              const errorMsg = `Error inserting city ${item.code} (${item.name}): Cannot create missing province ${item.province_code}`;
+              errorLog.push(errorMsg);
+              continue;
+            }
+          } else {
+            errors++;
+            const errorMsg = `Error inserting city ${item.code} (${item.name}): Missing province ${item.province_code} and region`;
+            errorLog.push(errorMsg);
+            continue;
+          }
         }
       }
       // Clear district_code if it doesn't exist (foreign key constraint)
@@ -432,7 +478,6 @@ async function importData(filePath, format = 'json') {
       errors++;
       const errorMsg = `Error inserting city ${item.code} (${item.name}): ${error.message}`;
       errorLog.push(errorMsg);
-      if (errors <= 30) console.error(`  ${errorMsg}`);
     }
   }
   console.log(`  ✓ Imported ${cities} cities\n`);
@@ -440,7 +485,10 @@ async function importData(filePath, format = 'json') {
   console.log(`Importing ${municipalitiesList.length} municipalities...`);
   for (const item of municipalitiesList) {
     try {
-      // Ensure region exists
+      // Ensure region exists or auto-extract it
+      if (!item.region_code) {
+        item.region_code = extractRegionCode(item.code);
+      }
       if (item.region_code) {
         const regionExists = await db.get('SELECT code FROM regions WHERE code = ?', [item.region_code]);
         if (!regionExists) {
@@ -452,13 +500,35 @@ async function importData(filePath, format = 'json') {
           });
         }
       }
-      // Ensure province exists
+      // Ensure province exists or auto-extract it
+      if (!item.province_code) {
+        item.province_code = extractProvinceCode(item.code);
+      }
       if (item.province_code) {
         const provinceExists = await db.get('SELECT code FROM provinces WHERE code = ?', [item.province_code]);
         if (!provinceExists) {
-          // Skip municipalities with missing provinces
-          errors++;
-          continue;
+          // Try to create province if region exists
+          if (item.region_code) {
+            try {
+              await insertProvince({
+                code: item.province_code,
+                name: `Province ${item.province_code.substring(0, 4)}`,
+                region_code: item.region_code,
+                island_group_code: null
+              });
+            } catch (provError) {
+              // Province creation failed, skip this municipality
+              errors++;
+              const errorMsg = `Error inserting municipality ${item.code} (${item.name}): Cannot create missing province ${item.province_code}`;
+              errorLog.push(errorMsg);
+              continue;
+            }
+          } else {
+            errors++;
+            const errorMsg = `Error inserting municipality ${item.code} (${item.name}): Missing province ${item.province_code} and region`;
+            errorLog.push(errorMsg);
+            continue;
+          }
         }
       }
       // Clear district_code if it doesn't exist (foreign key constraint)
@@ -474,7 +544,6 @@ async function importData(filePath, format = 'json') {
       errors++;
       const errorMsg = `Error inserting municipality ${item.code} (${item.name}): ${error.message}`;
       errorLog.push(errorMsg);
-      if (errors <= 40) console.error(`  ${errorMsg}`);
     }
   }
   console.log(`  ✓ Imported ${municipalities} municipalities\n`);
@@ -482,7 +551,10 @@ async function importData(filePath, format = 'json') {
   console.log(`Importing ${barangaysList.length} barangays...`);
   for (const item of barangaysList) {
     try {
-      // Ensure region exists
+      // Ensure region exists or auto-extract it
+      if (!item.region_code) {
+        item.region_code = extractRegionCode(item.code);
+      }
       if (item.region_code) {
         const regionExists = await db.get('SELECT code FROM regions WHERE code = ?', [item.region_code]);
         if (!regionExists) {
@@ -500,7 +572,7 @@ async function importData(filePath, format = 'json') {
         item.province_code = extractProvinceCode(item.code);
       }
       
-      // Try to ensure province exists, but don't fail if it doesn't
+      // Try to ensure province exists
       if (item.province_code) {
         const provinceExists = await db.get('SELECT code FROM provinces WHERE code = ?', [item.province_code]);
         if (!provinceExists) {
@@ -514,11 +586,24 @@ async function importData(filePath, format = 'json') {
                 island_group_code: null
               });
             } catch (provError) {
-              // If province creation fails, continue anyway (might be duplicate or other issue)
-              // Silently continue - province might already exist or have constraints
+              // If province creation fails, log but continue (might be duplicate or other issue)
+              errors++;
+              const errorMsg = `Error inserting barangay ${item.code} (${item.name}): Cannot create missing province ${item.province_code} - ${provError.message}`;
+              errorLog.push(errorMsg);
+              continue;
             }
+          } else {
+            errors++;
+            const errorMsg = `Error inserting barangay ${item.code} (${item.name}): Missing province ${item.province_code} and region`;
+            errorLog.push(errorMsg);
+            continue;
           }
         }
+      } else {
+        errors++;
+        const errorMsg = `Error inserting barangay ${item.code} (${item.name}): Cannot extract province code`;
+        errorLog.push(errorMsg);
+        continue;
       }
       
       await insertBarangay(item);
@@ -527,7 +612,6 @@ async function importData(filePath, format = 'json') {
       errors++;
       const errorMsg = `Error inserting barangay ${item.code} (${item.name}): ${error.message}`;
       errorLog.push(errorMsg);
-      if (errors <= 50) console.error(`  ${errorMsg}`);
     }
   }
   console.log(`  ✓ Imported ${barangays} barangays\n`);
@@ -540,10 +624,41 @@ async function importData(filePath, format = 'json') {
   console.log(`- Municipalities: ${municipalities}`);
   console.log(`- Barangays: ${barangays}`);
   console.log(`Total: ${regions + provinces + districts + cities + municipalities + barangays} records`);
+  
+  // Compare with PSA 2025 standards
+  console.log('\n📊 Comparison with PSA 2025 Standards:');
+  const PSA_2025 = {
+    regions: 18,
+    provinces: 82,
+    cities: 149,
+    municipalities: 1493,
+    barangays: 42011
+  };
+  
+  const compareCount = (name, actual, expected) => {
+    const diff = actual - expected;
+    if (diff === 0) {
+      console.log(`  ✅ ${name}: ${actual} (EXACT MATCH)`);
+    } else {
+      console.log(`  ${diff > 0 ? '⚠️' : '❌'} ${name}: ${actual} (expected: ${expected}, difference: ${diff > 0 ? '+' : ''}${diff})`);
+    }
+  };
+  
+  compareCount('Regions', regions, PSA_2025.regions);
+  compareCount('Provinces', provinces, PSA_2025.provinces);
+  compareCount('Cities', cities, PSA_2025.cities);
+  compareCount('Municipalities', municipalities, PSA_2025.municipalities);
+  compareCount('Barangays', barangays, PSA_2025.barangays);
+  
   if (errors > 0) {
     console.log(`\n⚠️  ${errors} errors encountered during import`);
+    console.log('\n📋 Error Details:');
+    const errorsToShow = Math.min(errorLog.length, 50);
+    for (let i = 0; i < errorsToShow; i++) {
+      console.log(`  ${i + 1}. ${errorLog[i]}`);
+    }
     if (errorLog.length > 50) {
-      console.log(`First 50 errors logged. Total error log: ${errorLog.length} entries`);
+      console.log(`\n... and ${errorLog.length - 50} more errors (showing first 50)`);
     }
   }
 }

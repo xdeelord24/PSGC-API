@@ -9,9 +9,15 @@
     "test": "jest",
     "seed": "node src/scripts/seedSampleData.js",
     "import": "node src/scripts/importPSGC.js",
+    "validate": "node src/scripts/validatePSGC.js",
+    "diagnose": "node src/scripts/diagnoseDiscrepancies.js",
+    "fetch": "node src/scripts/fetchFromPSGCCloud.js",
     "download": "node src/scripts/downloadPSGC.js",
     "fetch-psgc": "node src/scripts/fetchPSGC.js",
-    "fetch-data": "node src/scripts/fetchFromPSGCCloud.js"
+    "fetch-data": "node src/scripts/fetchFromPSGCCloud.js",
+    "download-psa": "node src/scripts/downloadFromPSA.js",
+    "fetch-barangays": "node src/scripts/fetchBarangaysAlternative.js",
+    "download-dilg": "node src/scripts/downloadFromDILG.js"
   },
   "keywords": [
     "psgc",
@@ -27,16 +33,16 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "sqlite3": "^5.1.6",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
-    "express-rate-limit": "^7.1.5"
+    "sqlite3": "^5.1.6",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
   }
 }
-

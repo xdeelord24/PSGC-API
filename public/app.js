@@ -150,7 +150,7 @@ async function loadStats() {
                 return r.json();
             }).catch(e => {
                 debug('Error fetching barangays:', e);
-                return { count: 0 };
+                return { count: 0, total: 0 };
             })
         ]);
 
@@ -158,7 +158,8 @@ async function loadStats() {
         document.getElementById('provinces-count').textContent = provinces.count || 0;
         document.getElementById('cities-count').textContent = cities.count || 0;
         document.getElementById('municipalities-count').textContent = municipalities.count || 0;
-        document.getElementById('barangays-count').textContent = barangays.count || 0;
+        // Use total count if available, otherwise fall back to count
+        document.getElementById('barangays-count').textContent = barangays.total || barangays.count || 0;
         debug('Statistics loaded successfully');
     } catch (error) {
         console.error('Error loading stats:', error);

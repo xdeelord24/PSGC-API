@@ -4,9 +4,11 @@ const getAllBarangays = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 1000;
     const barangays = await Barangay.getAll(limit);
+    const totalCount = await Barangay.getCount();
     res.json({
       data: barangays,
-      count: barangays.length
+      count: barangays.length,
+      total: totalCount
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

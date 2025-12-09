@@ -87,6 +87,11 @@ class Barangay {
       LIMIT ?
     `, [`%${query}%`, limit]);
   }
+
+  static async getCount() {
+    const result = await db.get('SELECT COUNT(*) as count FROM barangays');
+    return result ? result.count : 0;
+  }
 }
 
 module.exports = Barangay;

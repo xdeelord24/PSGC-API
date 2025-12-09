@@ -131,13 +131,14 @@ async function fetchAllPSGCData() {
   
   try {
     // Fetch all entities (handle errors individually)
+    console.log('Fetching regions, provinces, cities, and municipalities...');
     const results = await Promise.allSettled([
       fetchJSON(`${PSGC_CLOUD_BASE}/regions`),
       fetchJSON(`${PSGC_CLOUD_BASE}/provinces`),
       fetchJSON(`${PSGC_CLOUD_BASE}/cities`),
       fetchJSON(`${PSGC_CLOUD_BASE}/municipalities`),
-      fetchJSON(`${PSGC_CLOUD_BASE}/barangays`).catch(() => {
-        console.log('  ⚠️  Barangays endpoint failed, will try alternative approach...');
+      fetchJSON(`${PSGC_CLOUD_BASE}/barangays`).catch((error) => {
+        console.log(`  ⚠️  Direct barangays endpoint failed (${error.message}), will try by province...`);
         return null;
       })
     ]);
@@ -150,24 +151,30 @@ async function fetchAllPSGCData() {
     
     // Try to fetch barangays by province if direct fetch failed
     if (!barangaysRaw && provincesRaw.length > 0) {
-      console.log('\nFetching barangays by province (this may take a while)...');
+      console.log(`\nFetching barangays by province (${provincesRaw.length} provinces, this may take a while)...`);
       barangaysRaw = [];
       
-      // Fetch first few provinces as test
-      for (let i = 0; i < Math.min(5, provincesRaw.length); i++) {
+      // Fetch ALL provinces
+      for (let i = 0; i < provincesRaw.length; i++) {
         try {
           const provCode = normalizeCode(provincesRaw[i].code);
+          const provName = provincesRaw[i].name || provincesRaw[i].Name || `Province ${i + 1}`;
           const barangays = await fetchJSON(`${PSGC_CLOUD_BASE}/provinces/${provCode}/barangays`);
           if (Array.isArray(barangays)) {
             barangaysRaw.push(...barangays);
+            console.log(`  ✓ ${provName}: ${barangays.length} barangays (total: ${barangaysRaw.length})`);
           }
+          // Add small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
-          console.log(`  ⚠️  Failed to fetch barangays for province ${i + 1}`);
+          console.log(`  ⚠️  Failed to fetch barangays for province ${i + 1}: ${error.message}`);
         }
       }
       
       if (barangaysRaw.length > 0) {
-        console.log(`  ✅ Fetched ${barangaysRaw.length} barangays (sample)`);
+        console.log(`\n  ✅ Fetched ${barangaysRaw.length} barangays total`);
+      } else {
+        console.log(`  ⚠️  No barangays fetched`);
       }
     }
     
