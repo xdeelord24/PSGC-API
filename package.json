@@ -18,7 +18,8 @@
     "fetch-data": "node src/scripts/fetchFromPSGCCloud.js",
     "download-psa": "node src/scripts/downloadFromPSA.js",
     "fetch-barangays": "node src/scripts/fetchBarangaysAlternative.js",
-    "download-dilg": "node src/scripts/downloadFromDILG.js"
+    "download-dilg": "node src/scripts/downloadFromDILG.js",
+    "fix-missing": "node src/scripts/fixMissingRecords.js"
   },
   "keywords": [
     "psgc",

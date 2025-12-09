@@ -98,10 +98,21 @@ async function validateDataFile(filePath) {
       if (samples.districts.length < 3) samples.districts.push({ code, name, type });
     } else if (code.match(/^\d{6}000$/)) {
       // City/Municipality: XXYYZZ000
-      const isCity = type === 'City' || 
+      // Check for explicit municipality designation first to avoid false positives
+      const isExplicitMunicipality = name.toLowerCase().includes('municipality of') ||
+                                     (name.toLowerCase().includes('municipality') && 
+                                      !name.toLowerCase().includes('city'));
+      
+      // City detection: check type, name patterns, and city_class field
+      const isCity = !isExplicitMunicipality && (
+                     type === 'City' || 
+                     type === 'city' ||
                      name.toLowerCase().includes('city of') || 
                      name.toLowerCase().endsWith(' city') ||
-                     name.toLowerCase().includes('city');
+                     name.toLowerCase().includes('city') ||
+                     item.city_class ||
+                     item.cityClass ||
+                     item.city_classification);
       
       if (isCity) {
         counts.cities++;

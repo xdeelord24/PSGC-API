@@ -318,19 +318,22 @@ async function importData(filePath, format = 'json') {
     // Examples: 137404000 (Quezon City), 137602000 (Makati)
     else if (code.match(/^\d{6}000$/)) {
       // Distinguish between City and Municipality
-      // More precise city detection to avoid misclassifying municipalities
-      const isCity = type === 'City' || 
+      // Check for explicit municipality designation first to avoid false positives
+      const isExplicitMunicipality = name.toLowerCase().includes('municipality of') ||
+                                     (name.toLowerCase().includes('municipality') && 
+                                      !name.toLowerCase().includes('city'));
+      
+      // City detection: check type, name patterns, and city_class field
+      const isCity = !isExplicitMunicipality && (
+                     type === 'City' || 
+                     type === 'city' ||
                      name.toLowerCase().includes('city of') || 
                      name.toLowerCase().endsWith(' city') ||
-                     (name.toLowerCase().includes('city') && (
-                       name.toLowerCase().includes('highly urbanized') ||
-                       name.toLowerCase().includes('independent component') ||
-                       name.toLowerCase().includes('component city') ||
-                       name.toLowerCase().startsWith('city of')
-                     )) ||
+                     name.toLowerCase().includes('city') ||
                      normalizedItem.city_class ||
-                     normalizedItem.cityCode ||
-                     normalizedItem.city_classification;
+                     normalizedItem.cityClass ||
+                     normalizedItem.city_classification ||
+                     normalizedItem.cityCode);
       
       if (isCity) {
         citiesList.push(normalizedItem);
